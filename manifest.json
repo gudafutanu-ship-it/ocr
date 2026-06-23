@@ -1,13 +1,11 @@
 {
   "name": "小説本文OCR",
-  "short_name": "小説OCR",
-  "description": "見開きスキャンPDFから小説本文だけを抽出するアプリ",
+  "short_name": "本文OCR",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#111827",
-  "orientation": "portrait-primary",
+  "background_color": "#0b1220",
+  "theme_color": "#2563eb",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
