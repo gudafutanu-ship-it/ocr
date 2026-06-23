@@ -1,201 +1,113 @@
 <!doctype html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>小説本文OCR</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#111827">
-  <style>
-    :root { --bg:#0f172a; --card:#111827; --ink:#f8fafc; --muted:#94a3b8; --line:#334155; --btn:#2563eb; --bad:#ef4444; --ok:#22c55e; }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif; background:linear-gradient(180deg,#0f172a,#020617); color:var(--ink); }
-    .wrap { max-width:900px; margin:0 auto; padding:18px 14px 80px; }
-    h1 { font-size:24px; margin:8px 0 6px; }
-    p { color:var(--muted); line-height:1.6; }
-    .card { background:rgba(17,24,39,.92); border:1px solid var(--line); border-radius:18px; padding:16px; margin:14px 0; box-shadow:0 10px 30px rgba(0,0,0,.25); }
-    label { display:block; font-weight:700; margin:10px 0 6px; }
-    input, textarea, button { width:100%; border-radius:14px; border:1px solid var(--line); font-size:16px; }
-    input { padding:13px; background:#020617; color:var(--ink); }
-    button { padding:14px; margin-top:10px; background:var(--btn); color:white; font-weight:800; border:none; }
-    button.secondary { background:#334155; }
-    button.danger { background:#7f1d1d; }
-    button:disabled { opacity:.5; }
-    textarea { min-height:360px; padding:14px; background:#020617; color:#e5e7eb; line-height:1.8; resize:vertical; }
-    .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-    .status { white-space:pre-wrap; background:#020617; border:1px solid var(--line); border-radius:14px; padding:12px; color:#cbd5e1; min-height:48px; }
-    .bar { height:12px; background:#020617; border:1px solid var(--line); border-radius:999px; overflow:hidden; margin-top:10px; }
-    .bar > div { height:100%; width:0%; background:var(--ok); transition:width .2s; }
-    .thumbs { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; margin-top:10px; }
-    .thumb { border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#020617; }
-    .thumb canvas { width:100%; display:block; }
-    .thumb div { padding:8px; color:var(--muted); font-size:13px; }
-    .small { font-size:13px; color:var(--muted); }
-    @media(max-width:640px){ .row{grid-template-columns:1fr;} h1{font-size:22px;} }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>小説本文OCR</title>
+<link rel="manifest" href="manifest.json" />
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#111827;--line:#334155;--txt:#f8fafc;--muted:#93a4bd;--blue:#2563eb;--red:#f87171;--ok:#34d399}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#0f172a,#020617);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:18px}main{max-width:920px;margin:auto}.card{background:rgba(17,24,39,.92);border:1px solid var(--line);border-radius:18px;padding:16px;margin:14px 0;box-shadow:0 10px 30px rgba(0,0,0,.25)}h1{font-size:25px;margin:0 0 8px}.muted{color:var(--muted);font-size:14px;line-height:1.7}label{display:block;font-weight:700;margin:14px 0 8px}input,textarea,button{width:100%;border-radius:14px;border:1px solid #475569;background:#020617;color:var(--txt);font-size:16px;padding:12px}input[type=file]{padding:12px;background:#020617}button{border:0;background:var(--blue);font-weight:800;margin-top:10px;cursor:pointer}button.secondary{background:#334155}button:disabled{opacity:.45}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:650px){.row{grid-template-columns:1fr}}#status{white-space:pre-wrap;background:#020617;border:1px solid var(--line);border-radius:14px;padding:12px;min-height:48px;color:#dbeafe}#result{height:45vh;line-height:1.8}.pages{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}.page{border:1px solid var(--line);border-radius:12px;padding:8px;background:#020617}.page img{width:100%;border-radius:8px}.page small{color:var(--muted)}.ok{color:var(--ok)}.err{color:var(--red)}</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
-<div class="wrap">
-  <h1>小説本文OCR</h1>
-  <p>文庫本の見開きスキャンPDFから、本文だけを抽出します。ルビ・手書き・斜線・ページ番号は無視する前提です。</p>
-
-  <div class="card">
-    <label>Worker URL</label>
-    <input id="workerUrl" placeholder="https://xxxx.xxxx.workers.dev">
-    <label>パスワード</label>
-    <input id="password" type="password" inputmode="numeric" placeholder="Workerに設定したパスワード">
-    <label>PDF</label>
-    <input id="pdfFile" type="file" accept="application/pdf">
-    <div class="row">
-      <button id="renderBtn">PDFを読み込む</button>
-      <button id="ocrBtn" disabled>本文抽出開始</button>
-    </div>
-    <div class="bar"><div id="bar"></div></div>
-    <div id="status" class="status">準備中</div>
-  </div>
-
-  <div class="card">
-    <div class="row">
-      <button class="secondary" id="copyBtn">結果をコピー</button>
-      <button class="secondary" id="saveBtn">TXT保存</button>
-    </div>
-    <textarea id="result" placeholder="ここに本文が入ります"></textarea>
-  </div>
-
-  <div class="card">
-    <b>ページ確認</b>
-    <p class="small">見開き1枚ずつ表示します。明らかに不要な斜線ページがあれば、OCR後にその部分を結果欄で削除してください。</p>
-    <div id="thumbs" class="thumbs"></div>
-  </div>
+<main>
+<h1>小説本文OCR</h1>
+<p class="muted">文庫本の見開きスキャンPDFから、本文だけを抽出します。ルビ・手書き・斜線・ページ番号は無視する前提です。</p>
+<div class="card">
+<label>Worker URL</label>
+<input id="workerUrl" placeholder="https://xxxxx.xxxxx.workers.dev" />
+<label>パスワード</label>
+<input id="password" type="password" autocomplete="current-password" />
+<label>PDF</label>
+<input id="pdfFile" type="file" accept="application/pdf" />
+<div class="row">
+<button id="testBtn" class="secondary">Worker接続テスト</button>
+<button id="loadBtn">PDFを読み込む</button>
 </div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<button id="ocrBtn" disabled>本文抽出開始</button>
+<div id="status">待機中</div>
+</div>
+<div class="card"><div id="pages" class="pages"></div></div>
+<div class="card">
+<div class="row">
+<button id="copyBtn" class="secondary">コピー</button>
+<button id="saveBtn" class="secondary">TXT保存</button>
+</div>
+<textarea id="result" placeholder="ここに結果が表示されます"></textarea>
+</div>
+</main>
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+const $=id=>document.getElementById(id);
+let pageImages=[];
+function setStatus(s,cls=""){ const el=$("status"); el.className=cls; el.textContent=s; }
+function cleanUrl(){ return $("workerUrl").value.trim().replace(/\/+$/,''); }
+function saveSettings(){ localStorage.setItem('novelOcrWorkerUrl', cleanUrl()); }
+$("workerUrl").value = localStorage.getItem('novelOcrWorkerUrl') || "";
 
-const $ = id => document.getElementById(id);
-const workerUrlEl = $("workerUrl");
-const passwordEl = $("password");
-const pdfFileEl = $("pdfFile");
-const renderBtn = $("renderBtn");
-const ocrBtn = $("ocrBtn");
-const statusEl = $("status");
-const barEl = $("bar");
-const resultEl = $("result");
-const thumbsEl = $("thumbs");
-
-let pageImages = [];
-workerUrlEl.value = localStorage.getItem("novel_ocr_worker_url") || "";
-passwordEl.value = localStorage.getItem("novel_ocr_password") || "";
-
-function setStatus(msg){ statusEl.textContent = msg; }
-function setProgress(done,total){ barEl.style.width = total ? Math.round(done/total*100)+"%" : "0%"; }
-
-renderBtn.onclick = async () => {
-  try {
-    const file = pdfFileEl.files[0];
-    if (!file) return alert("PDFを選んでください。祖");
-    pageImages = [];
-    thumbsEl.innerHTML = "";
-    resultEl.value = "";
-    ocrBtn.disabled = true;
-    setProgress(0,1);
-    setStatus("PDFを画像化しています…");
-
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-    for (let i=1; i<=pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const viewport0 = page.getViewport({ scale: 1 });
-      const targetWidth = 1600;
-      const scale = Math.min(2.2, Math.max(1.2, targetWidth / viewport0.width));
-      const viewport = page.getViewport({ scale });
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d", { alpha:false });
-      canvas.width = Math.floor(viewport.width);
-      canvas.height = Math.floor(viewport.height);
-      await page.render({ canvasContext: ctx, viewport }).promise;
-      const image = canvas.toDataURL("image/jpeg", 0.86);
-      pageImages.push({ pageNumber:i, image });
-
-      const box = document.createElement("div");
-      box.className = "thumb";
-      const small = document.createElement("canvas");
-      const sctx = small.getContext("2d");
-      small.width = 240;
-      small.height = Math.round(240 * canvas.height / canvas.width);
-      sctx.drawImage(canvas, 0, 0, small.width, small.height);
-      const cap = document.createElement("div");
-      cap.textContent = `見開き ${i}`;
-      box.appendChild(small);
-      box.appendChild(cap);
-      thumbsEl.appendChild(box);
-
-      setProgress(i, pdf.numPages);
-      setStatus(`PDF画像化中：${i} / ${pdf.numPages}`);
-    }
-    setStatus(`読み込み完了：${pdf.numPages}枚の見開き画像を作成しました。`);
-    ocrBtn.disabled = false;
-  } catch (e) {
-    setStatus("エラー：" + e.message);
+async function testWorker(){
+  const url=cleanUrl(); saveSettings();
+  if(!url){ setStatus('Worker URLを入力してください','err'); return; }
+  setStatus('Workerへ接続確認中...');
+  try{
+    const res=await fetch(url + '/ping',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$("password").value})});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok || !data.ok) throw new Error(data.error || ('HTTP '+res.status));
+    setStatus('接続OKです。Worker、CORS、パスワードは通っています。','ok');
+  }catch(e){
+    setStatus('接続テスト失敗：'+e.message+'\n\n※Workerのデプロイ、シークレット、CORSを確認してください。','err');
   }
-};
+}
 
-ocrBtn.onclick = async () => {
-  const workerUrl = workerUrlEl.value.trim().replace(/\/$/, "");
-  const password = passwordEl.value.trim();
-  if (!workerUrl) return alert("Worker URLを入力してください。");
-  if (!password) return alert("パスワードを入力してください。");
-  if (!pageImages.length) return alert("先にPDFを読み込んでください。");
-
-  localStorage.setItem("novel_ocr_worker_url", workerUrl);
-  localStorage.setItem("novel_ocr_password", password);
-
-  ocrBtn.disabled = true;
-  renderBtn.disabled = true;
-  resultEl.value = "";
-  setProgress(0, pageImages.length);
-
-  const outputs = [];
-  try {
-    for (let i=0; i<pageImages.length; i++) {
-      const p = pageImages[i];
-      setStatus(`本文抽出中：見開き ${p.pageNumber} / ${pageImages.length}\n少し待つ場合があります。`);
-      const res = await fetch(workerUrl, {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ password, image:p.image, pageNumber:p.pageNumber })
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "OCRエラー");
-      if (data.text && data.text.trim()) outputs.push(data.text.trim());
-      resultEl.value = outputs.join("\n\n");
-      setProgress(i+1, pageImages.length);
-    }
-    setStatus("完了しました。TXT保存またはコピーできます。");
-  } catch(e) {
-    setStatus("エラー：" + e.message);
-  } finally {
-    ocrBtn.disabled = false;
-    renderBtn.disabled = false;
+async function loadPdf(){
+  const f=$("pdfFile").files[0];
+  if(!f){ setStatus('PDFを選んでください','err'); return; }
+  pageImages=[]; $("pages").innerHTML=""; $("ocrBtn").disabled=true;
+  setStatus('PDFを読み込み中...');
+  const buf=await f.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  for(let i=1;i<=pdf.numPages;i++){
+    setStatus(`PDF画像化中 ${i}/${pdf.numPages}`);
+    const page=await pdf.getPage(i);
+    const vp=page.getViewport({scale:2.0});
+    const canvas=document.createElement('canvas');
+    canvas.width=vp.width; canvas.height=vp.height;
+    await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+    const dataUrl=canvas.toDataURL('image/jpeg',0.88);
+    pageImages.push(dataUrl);
+    const div=document.createElement('div'); div.className='page';
+    div.innerHTML=`<img src="${dataUrl}"><small>PDF ${i}ページ目（見開き）</small>`;
+    $("pages").appendChild(div);
   }
-};
+  $("ocrBtn").disabled=false;
+  setStatus(`読み込み完了：${pdf.numPages}ページ。本文抽出できます。`,'ok');
+}
 
-$("copyBtn").onclick = async () => {
-  await navigator.clipboard.writeText(resultEl.value);
-  setStatus("コピーしました。");
-};
+async function ocr(){
+  const url=cleanUrl(); saveSettings();
+  if(!url){ setStatus('Worker URLを入力してください','err'); return; }
+  if(!pageImages.length){ setStatus('先にPDFを読み込んでください','err'); return; }
+  $("ocrBtn").disabled=true; $("result").value="";
+  try{
+    for(let i=0;i<pageImages.length;i++){
+      setStatus(`OpenAIで本文抽出中 ${i+1}/${pageImages.length}...`);
+      const res=await fetch(url + '/ocr',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$("password").value,image:pageImages[i]})});
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok || !data.ok) throw new Error(data.error ? data.error + (data.detail? '\n'+JSON.stringify(data.detail).slice(0,800):'') : 'HTTP '+res.status);
+      const t=(data.text||'').trim();
+      if(t){ $("result").value += ($("result").value?"\n\n":"") + t; }
+    }
+    setStatus('完了しました。','ok');
+  }catch(e){ setStatus('エラー：'+e.message,'err'); }
+  finally{ $("ocrBtn").disabled=false; }
+}
 
-$("saveBtn").onclick = () => {
-  const blob = new Blob([resultEl.value], { type:"text/plain;charset=utf-8" });
-  const a = document.createElement("a");
-  const name = "novel_ocr_" + new Date().toISOString().slice(0,10) + ".txt";
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(a.href);
-};
+$("testBtn").onclick=testWorker;
+$("loadBtn").onclick=loadPdf;
+$("ocrBtn").onclick=ocr;
+$("copyBtn").onclick=async()=>{ await navigator.clipboard.writeText($("result").value); setStatus('コピーしました','ok'); };
+$("saveBtn").onclick=()=>{ const blob=new Blob([$("result").value],{type:'text/plain;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='novel_ocr_text.txt'; a.click(); URL.revokeObjectURL(a.href); };
 </script>
 </body>
 </html>
